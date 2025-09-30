@@ -1,0 +1,59 @@
+{
+  "regions": {
+    "health_bar": {
+      "coordinates": [0.4, 0.93, 0.6, 0.97],
+      "description": "Player health display area"
+    },
+    "gold_display": {
+      "coordinates": [0.87, 0.88, 0.95, 0.92],
+      "description": "Gold counter location"
+    },
+    "round_indicator": {
+      "coordinates": [0.47, 0.02, 0.53, 0.06],
+      "description": "Round number display"
+    },
+    "shop": {
+      "coordinates": [0.25, 0.92, 0.75, 1.0],
+      "description": "Champion shop area"
+    },
+    "board": {
+      "coordinates": [0.2, 0.4, 0.8, 0.85],
+      "description": "Main game board"
+    },
+    "bench": {
+      "coordinates": [0.25, 0.85, 0.75, 0.92],
+      "description": "Champion bench area"
+    }
+  },
+  "detection_thresholds": {
+    "carousel_blue_ratio": 0.15,
+    "combat_min_contours": 10,
+    "shop_min_lines": 5,
+    "scene_change_threshold": 0.3,
+    "round_change_threshold": 0.1,
+    "health_damage_threshold": 10,
+    "low_health_threshold": 20,
+    "high_gold_threshold": 50
+  },
+  "priority_levels": {
+    "carousel_round": 9,
+    "combat_start": 7,
+    "shop_refresh": 5,
+    "level_up": 8,
+    "item_received": 6,
+    "round_end": 7,
+    "game_over": 10,
+    "win_streak": 4,
+    "low_health": 8,
+    "high_gold": 3,
+    "scene_change": 5,
+    "major_damage": 8
+  },
+  "capture_settings": {
+    "default_sample_rate": 0.5,
+    "aggressive_priority_threshold": 5,
+    "normal_priority_threshold": 7,
+    "max_buffer_size": 30,
+    "frame_buffer_size": 5
+  }
+}
