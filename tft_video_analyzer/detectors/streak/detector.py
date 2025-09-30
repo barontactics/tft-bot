@@ -7,6 +7,13 @@ import pytesseract
 from typing import Optional, Tuple, Dict
 from enum import Enum
 
+# Try to import EasyOCR (optional)
+try:
+    import easyocr
+    EASYOCR_AVAILABLE = True
+except ImportError:
+    EASYOCR_AVAILABLE = False
+
 class StreakType(Enum):
     """Enumeration for streak types"""
     WIN = "win"
@@ -16,26 +23,34 @@ class StreakType(Enum):
 class TFTStreakDetector:
     """Detects and extracts streak type and length from TFT gameplay screens"""
 
-    def __init__(self):
+    def __init__(self, use_easyocr=True):
         # Streak region coordinates (relative to screen size)
         # Streak is displayed to the right of gold region
         # Smaller region focusing on the darker area where number appears
         self.streak_region = {
             'x1_rel': 0.5425, # 54.25% from left (moved 1% right)
-            'x2_rel': 0.5825, # 58.25% from left (4% width)
+            'x2_rel': 0.5775, # 57.75% from left (3.5% width, reduced 0.5% on right)
             'y1_rel': 0.810,  # 81% from top
             'y2_rel': 0.840   # 84% from top (3% height)
         }
 
+        # Initialize EasyOCR reader if available and requested
+        self.easyocr_reader = None
+        if use_easyocr and EASYOCR_AVAILABLE:
+            try:
+                self.easyocr_reader = easyocr.Reader(['en'], gpu=False, verbose=False)
+            except Exception as e:
+                self.easyocr_reader = None
+
         # Color ranges in HSV for streak types
-        # Blue fire for loss streak
-        self.blue_lower = np.array([100, 50, 50])
+        # Blue fire for loss streak (moderate thresholds for dim flames)
+        self.blue_lower = np.array([100, 40, 40])
         self.blue_upper = np.array([130, 255, 255])
 
-        # Red/orange fire for win streak
-        self.red_lower1 = np.array([0, 50, 50])
+        # Red/orange fire for win streak (moderate thresholds for dim flames)
+        self.red_lower1 = np.array([0, 40, 40])
         self.red_upper1 = np.array([10, 255, 255])
-        self.red_lower2 = np.array([170, 50, 50])
+        self.red_lower2 = np.array([170, 40, 40])
         self.red_upper2 = np.array([180, 255, 255])
 
     def extract_streak_region(self, frame: np.ndarray) -> np.ndarray:
@@ -49,17 +64,23 @@ class TFTStreakDetector:
 
         return frame[y1:y2, x1:x2]
 
-    def detect_streak_type(self, region: np.ndarray) -> StreakType:
+    def detect_streak_type(self, region: np.ndarray, save_debug_masks=False, debug_path=None) -> StreakType:
         """
         Detect if streak is win, loss, or none based on flame color
 
         Args:
             region: The streak region image
+            save_debug_masks: Whether to save debug mask images
+            debug_path: Path prefix for debug images
 
         Returns:
             StreakType enum value
         """
-        hsv = cv2.cvtColor(region, cv2.COLOR_BGR2HSV)
+        # Focus on the left 50% where the flame icon is (avoid number interference)
+        h, w = region.shape[:2]
+        flame_region = region[:, :int(w * 0.5)]
+
+        hsv = cv2.cvtColor(flame_region, cv2.COLOR_BGR2HSV)
 
         # Check for blue fire (loss streak)
         blue_mask = cv2.inRange(hsv, self.blue_lower, self.blue_upper)
@@ -71,20 +92,28 @@ class TFTStreakDetector:
         red_mask = cv2.bitwise_or(red_mask1, red_mask2)
         red_ratio = np.sum(red_mask > 0) / red_mask.size
 
+        # Save debug masks if requested
+        if save_debug_masks and debug_path:
+            cv2.imwrite(f"{debug_path}_flame_region.png", flame_region)
+            cv2.imwrite(f"{debug_path}_hsv.png", hsv)
+            cv2.imwrite(f"{debug_path}_blue_mask.png", blue_mask)
+            cv2.imwrite(f"{debug_path}_red_mask.png", red_mask)
+
         # Determine streak type based on color ratios
-        # Need at least 2% of pixels to be colored for valid detection
-        if blue_ratio > 0.02 and blue_ratio > red_ratio:
+        # Need at least 1.5% of pixels to be colored for valid detection
+        if blue_ratio > 0.015 and blue_ratio > red_ratio:
             return StreakType.LOSS
-        elif red_ratio > 0.02 and red_ratio > blue_ratio:
+        elif red_ratio > 0.015 and red_ratio > blue_ratio:
             return StreakType.WIN
         else:
             return StreakType.NONE
 
     def preprocess_for_ocr(self, region: np.ndarray) -> np.ndarray:
         """Preprocess the streak region for OCR to extract number"""
-        # Focus on the right 60% where the number typically appears
+        # Mask out the left 50% first to remove flames before processing
         h, w = region.shape[:2]
-        number_region = region[:, int(w*0.4):]
+        icon_width = int(w * 0.5)
+        number_region = region[:, icon_width:]
 
         # Convert to grayscale
         gray = cv2.cvtColor(number_region, cv2.COLOR_BGR2GRAY)
@@ -96,25 +125,18 @@ class TFTStreakDetector:
         clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
         enhanced = clahe.apply(scaled)
 
-        # Use higher threshold to avoid merging digits
-        _, binary = cv2.threshold(enhanced, 180, 255, cv2.THRESH_BINARY)
+        # Use Otsu's thresholding for cleaner binary image
+        _, binary = cv2.threshold(enhanced, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
-        # Clean up with smaller morphological operations to preserve digit separation
-        kernel = np.ones((1, 1), np.uint8)
+        # Minimal morphological operations to clean up
+        kernel = np.ones((2, 2), np.uint8)
         binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
-
-        # Remove small noise
-        contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        min_area = 15  # Minimum area for valid text
-        for cnt in contours:
-            if cv2.contourArea(cnt) < min_area:
-                cv2.drawContours(binary, [cnt], -1, 0, -1)
 
         return binary
 
-    def extract_streak_length(self, region: np.ndarray) -> Optional[int]:
+    def extract_streak_length_easyocr(self, region: np.ndarray) -> Optional[int]:
         """
-        Extract the streak length number using OCR
+        Extract the streak length number using EasyOCR
 
         Args:
             region: The streak region image
@@ -122,6 +144,54 @@ class TFTStreakDetector:
         Returns:
             Streak length as integer, or None if not detected
         """
+        if self.easyocr_reader is None:
+            return None
+
+        try:
+            # Preprocess for OCR
+            processed = self.preprocess_for_ocr(region)
+
+            # EasyOCR works better with RGB
+            processed_rgb = cv2.cvtColor(processed, cv2.COLOR_GRAY2RGB)
+
+            # Run EasyOCR with allowlist for digits only
+            results = self.easyocr_reader.readtext(
+                processed_rgb,
+                allowlist='0123456789',
+                detail=1  # Return confidence scores
+            )
+
+            # Filter results
+            for bbox, text, confidence in results:
+                text = text.strip()
+                if text and text.isdigit():
+                    length = int(text)
+                    # Validate reasonable streak length (0-15)
+                    if 0 <= length <= 15 and confidence > 0.3:
+                        return length
+
+        except Exception:
+            pass
+
+        return None
+
+    def extract_streak_length(self, region: np.ndarray) -> Optional[int]:
+        """
+        Extract the streak length number using OCR (tries EasyOCR first, then Tesseract)
+
+        Args:
+            region: The streak region image
+
+        Returns:
+            Streak length as integer, or None if not detected
+        """
+        # Try EasyOCR first if available
+        if self.easyocr_reader is not None:
+            length = self.extract_streak_length_easyocr(region)
+            if length is not None:
+                return length
+
+        # Fallback to Tesseract
         try:
             # Preprocess for OCR
             processed = self.preprocess_for_ocr(region)
