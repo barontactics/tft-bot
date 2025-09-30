@@ -6,16 +6,23 @@ import numpy as np
 import pytesseract
 from typing import Optional, Tuple
 
+# Try to import EasyOCR (optional)
+try:
+    import easyocr
+    EASYOCR_AVAILABLE = True
+except ImportError:
+    EASYOCR_AVAILABLE = False
+
 class TFTGoldDetector:
     """Detects and extracts gold amount from TFT gameplay screens"""
 
-    def __init__(self):
+    def __init__(self, use_easyocr=True):
         # Gold region coordinates (relative to screen size)
         # Gold is displayed in the bottom UI area, TRUE CENTER position
-        # Based on analysis, gold appears around 81.5-84.5% from top, 47-53% from left
+        # Optimized: 5% width with 35% spatial masking - best balance
         self.gold_region = {
-            'x1_rel': 0.47,   # 47% from left (true center)
-            'x2_rel': 0.53,   # 53% from left (6% width)
+            'x1_rel': 0.475,  # 47.5% from left (true center, +0.5%)
+            'x2_rel': 0.525,  # 52.5% from left (5% width - optimal balance)
             'y1_rel': 0.815,  # 81.5% from top
             'y2_rel': 0.845   # 84.5% from top (3% height)
         }
@@ -24,6 +31,17 @@ class TFTGoldDetector:
         # Based on analysis: Hue 12-17, Sat 106-151, Val 174-236
         self.gold_color_lower = np.array([10, 80, 150])  # Lower bound for gold/orange
         self.gold_color_upper = np.array([25, 200, 255])  # Upper bound for gold/orange
+
+        # Initialize EasyOCR reader if available and requested
+        self.easyocr_reader = None
+        if use_easyocr and EASYOCR_AVAILABLE:
+            try:
+                # Initialize with English only for faster performance
+                self.easyocr_reader = easyocr.Reader(['en'], gpu=False, verbose=False)
+                print("EasyOCR initialized successfully")
+            except Exception as e:
+                print(f"Failed to initialize EasyOCR: {e}")
+                self.easyocr_reader = None
 
     def extract_gold_region(self, frame: np.ndarray) -> np.ndarray:
         """Extract the region where gold amount is displayed"""
@@ -36,21 +54,43 @@ class TFTGoldDetector:
 
         return frame[y1:y2, x1:x2]
 
-    def preprocess_for_ocr(self, region: np.ndarray, mask_icon=True) -> np.ndarray:
-        """Preprocess the gold region for better OCR accuracy"""
+    def preprocess_for_ocr(self, region: np.ndarray, mask_icon=True, brightness_boost=0) -> np.ndarray:
+        """
+        Preprocess the gold region for better OCR accuracy
+
+        Args:
+            region: Input region
+            mask_icon: Whether to mask the gold icon area
+            brightness_boost: Additional brightness boost (0=normal, 1=moderate, 2=high)
+        """
         # Convert to grayscale first
         gray = cv2.cvtColor(region, cv2.COLOR_BGR2GRAY)
+
+        # Apply brightness boost for darker screens
+        if brightness_boost > 0:
+            # Method 1: Simple brightness addition
+            if brightness_boost == 1:
+                gray = cv2.add(gray, 30)  # Add 30 to all pixels
+            elif brightness_boost == 2:
+                gray = cv2.add(gray, 60)  # Add 60 to all pixels
+
+            # Method 2: Gamma correction for more natural brightness
+            gamma = 1.0 + (brightness_boost * 0.3)  # 1.3 or 1.6
+            inv_gamma = 1.0 / gamma
+            table = np.array([((i / 255.0) ** inv_gamma) * 255 for i in range(256)]).astype("uint8")
+            gray = cv2.LUT(gray, table)
 
         # Scale up for better OCR (4x for small text)
         scaled = cv2.resize(gray, None, fx=4, fy=4, interpolation=cv2.INTER_CUBIC)
 
-        # Apply CLAHE for contrast enhancement
-        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+        # Apply CLAHE for contrast enhancement (more aggressive for darker images)
+        clip_limit = 3.0 + (brightness_boost * 1.0)  # Increase CLAHE strength for darker images
+        clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=(8, 8))
         enhanced = clahe.apply(scaled)
 
-        # Use adaptive threshold for better results with varying backgrounds
-        # Gold text is bright, so we can use a simple brightness threshold
-        _, binary = cv2.threshold(enhanced, 140, 255, cv2.THRESH_BINARY)
+        # Adjust threshold based on brightness boost
+        threshold_value = 140 - (brightness_boost * 10)  # Lower threshold for darker images
+        _, binary = cv2.threshold(enhanced, threshold_value, 255, cv2.THRESH_BINARY)
 
         # Mask out the gold icon area (left portion of the region)
         # The icon typically occupies the left 25-35% of the region
@@ -103,9 +143,9 @@ class TFTGoldDetector:
         # For any other unusual values, return as-is but it's likely wrong
         return gold
 
-    def detect_gold(self, frame: np.ndarray) -> Optional[int]:
+    def detect_gold_easyocr(self, frame: np.ndarray) -> Optional[int]:
         """
-        Detect and extract gold amount from frame
+        Detect gold using EasyOCR
 
         Args:
             frame: OpenCV image (numpy array)
@@ -113,6 +153,65 @@ class TFTGoldDetector:
         Returns:
             Gold amount as integer, or None if not detected
         """
+        if self.easyocr_reader is None:
+            return None
+
+        try:
+            # Extract gold region
+            gold_region = self.extract_gold_region(frame)
+
+            # Check if region has gold-colored pixels
+            hsv = cv2.cvtColor(gold_region, cv2.COLOR_BGR2HSV)
+            mask = cv2.inRange(hsv, self.gold_color_lower, self.gold_color_upper)
+            gold_pixel_ratio = np.sum(mask > 0) / mask.size
+
+            if gold_pixel_ratio < 0.01:
+                return None
+
+            # Preprocess for OCR
+            processed = self.preprocess_for_ocr(gold_region)
+
+            # EasyOCR works better with RGB
+            processed_rgb = cv2.cvtColor(processed, cv2.COLOR_GRAY2RGB)
+
+            # Run EasyOCR with allowlist for digits only
+            results = self.easyocr_reader.readtext(
+                processed_rgb,
+                allowlist='0123456789',
+                detail=1  # Return confidence scores
+            )
+
+            # Filter results
+            for bbox, text, confidence in results:
+                text = text.strip()
+                if text and text.isdigit():
+                    gold = int(text)
+                    gold = self.validate_gold_amount(gold)
+                    if 0 <= gold <= 999 and confidence > 0.3:
+                        return gold
+
+        except Exception as e:
+            pass
+
+        return None
+
+    def detect_gold(self, frame: np.ndarray) -> Optional[int]:
+        """
+        Detect and extract gold amount from frame using ensemble approach
+
+        Args:
+            frame: OpenCV image (numpy array)
+
+        Returns:
+            Gold amount as integer, or None if not detected
+        """
+        # Try EasyOCR first if available
+        if self.easyocr_reader is not None:
+            easyocr_result = self.detect_gold_easyocr(frame)
+            if easyocr_result is not None:
+                return easyocr_result
+
+        # Fallback to Tesseract
         try:
             # Extract gold region
             gold_region = self.extract_gold_region(frame)
