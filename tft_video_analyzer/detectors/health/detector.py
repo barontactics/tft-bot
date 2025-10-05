@@ -3,20 +3,23 @@
 
 import cv2
 import numpy as np
-import pytesseract
+import easyocr
 from typing import Optional, Dict, Tuple, List
 
 class TFTHealthDetector:
     """Detects and extracts all players' health from TFT gameplay screens"""
 
     def __init__(self):
+        # Initialize EasyOCR reader
+        self.reader = easyocr.Reader(['en'], gpu=False)
+
         # Right sidebar region where player list appears
         # Players are listed vertically on the right side
         self.sidebar_region = {
             'x1_rel': 0.85,   # 85% from left (right side of screen)
             'x2_rel': 0.97,   # 97% from left (12% width)
-            'y1_rel': 0.16,   # 16% from top (skip top UI)
-            'y2_rel': 0.71    # 71% from top (55% height total)
+            'y1_rel': 0.17,   # 17% from top (moved down 1%)
+            'y2_rel': 0.72    # 72% from top (moved down 1%)
         }
 
         # Yellow color range for identifying user's player (in HSV)
@@ -144,6 +147,7 @@ class TFTHealthDetector:
     def extract_player_slots(self, frame: np.ndarray) -> List[Tuple[np.ndarray, int]]:
         """
         Extract individual player slots from the sidebar
+        Divides sidebar equally into 8 slots
 
         Returns:
             List of tuples (slot_image, slot_index) for up to 8 players
@@ -151,19 +155,18 @@ class TFTHealthDetector:
         slots = []
         sidebar = self.extract_sidebar_region(frame)
         sidebar_h, sidebar_w = sidebar.shape[:2]
-        frame_h = frame.shape[0]
 
-        # Each slot is 7.3% of the frame height
-        slot_height = int(frame_h * self.player_slot_height_rel)
-
-        # Calculate slot height within the sidebar
-        # Since sidebar is 55% of frame height, we need to scale appropriately
-        slot_height_in_sidebar = int(slot_height * (sidebar_h / (frame_h * 0.55)))
+        # Divide sidebar equally among 8 slots
+        slot_height_in_sidebar = sidebar_h // self.max_players
 
         for i in range(self.max_players):
             # Calculate position in sidebar
             y1 = i * slot_height_in_sidebar
-            y2 = min((i + 1) * slot_height_in_sidebar, sidebar_h)
+            y2 = (i + 1) * slot_height_in_sidebar
+
+            # Last slot gets any remaining pixels
+            if i == self.max_players - 1:
+                y2 = sidebar_h
 
             if y1 >= sidebar_h:
                 break
@@ -178,7 +181,7 @@ class TFTHealthDetector:
 
     def extract_health_and_name_from_slot(self, slot: np.ndarray) -> Tuple[Optional[int], Optional[str]]:
         """
-        Extract both health value and player name from a single player slot using full-slot OCR
+        Extract both health value and player name from a single player slot using EasyOCR
 
         Args:
             slot: Image of a single player slot
@@ -192,75 +195,88 @@ class TFTHealthDetector:
         # Scale up for better OCR
         scaled = cv2.resize(gray, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
 
-        # Apply simple threshold (works best based on testing)
+        # Apply simple threshold (works for both regular and user slots with proper sizing)
         _, binary = cv2.threshold(scaled, 150, 255, cv2.THRESH_BINARY)
 
-        # Try PSM 11 (sparse text) which works best for game UI
         try:
-            # First try with alphanumeric whitelist for cleaner results
-            config_alnum = '--psm 11 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 '
-            text = pytesseract.image_to_string(binary, config=config_alnum).strip()
+            # Use EasyOCR to read text from the slot
+            # Returns list of (bbox, text, confidence)
+            results = self.reader.readtext(binary, detail=1)
 
-            if not text:
-                # Fallback to PSM 3 if PSM 11 doesn't work
-                config_fallback = '--psm 3'
-                text = pytesseract.image_to_string(binary, config=config_fallback).strip()
+            if not results:
+                return None, None
 
-            # Parse the OCR result
-            if text:
-                # Clean up and split the text
-                lines = [line.strip() for line in text.split('\n') if line.strip()]
+            import re
 
-                health = None
-                name = None
+            health = None
+            name = None
+            all_health_values = []
 
-                for line in lines:
-                    # Split by common separators
-                    parts = line.replace('|', ' ').split()
+            # Process each detected text region
+            for bbox, text, confidence in results:
+                # Filter out overlay patterns
+                if re.search(r'\bLevel\s*\d+!?\b', text, flags=re.IGNORECASE):
+                    continue
 
-                    for part in parts:
-                        # Check if it's a health value (1-100)
-                        if part.isdigit():
-                            val = int(part)
+                # Clean the text
+                text = text.strip()
+
+                # Fix common OCR mistakes
+                text = text.replace('$', 'S')  # $ is often misread S
+                text = text.replace('|', 'I')  # | is often misread I
+
+                # Remove spaces and special characters except underscores
+                text_cleaned = re.sub(r'[^a-zA-Z0-9_]', '', text)
+
+                if not text_cleaned:
+                    continue
+
+                # Check if the cleaned text contains both letters and numbers
+                has_digit = any(c.isdigit() for c in text_cleaned)
+                has_alpha = any(c.isalpha() for c in text_cleaned)
+
+                if has_digit and has_alpha:
+                    # Mixed alphanumeric - try to extract name and health
+                    match = re.match(r'(.+?)(\d{1,3})$', text_cleaned)
+                    if match:
+                        potential_name = match.group(1)
+                        potential_health = match.group(2)
+
+                        # Validate health value
+                        if potential_health.isdigit():
+                            val = int(potential_health)
                             if 1 <= val <= 100:
-                                health = val
-                        # Check if it's mixed alphanumeric (like "mDBepo92")
-                        elif any(c.isdigit() for c in part) and any(c.isalpha() for c in part):
-                            # Try to extract numbers from the end
-                            import re
-                            # Match pattern to separate name from trailing numbers
-                            # This captures everything up to the last sequence of digits
-                            match = re.match(r'(.+?)(\d{1,3})$', part)
-                            if match:
-                                potential_name = match.group(1)
-                                potential_health = match.group(2)
+                                all_health_values.append(val)
+                                # Also extract the name part
+                                if len(potential_name) > 2:
+                                    name = potential_name
+                # Check if it's just a health value (1-100)
+                elif text_cleaned.isdigit():
+                    val = int(text_cleaned)
+                    if 1 <= val <= 100:
+                        all_health_values.append(val)
+                # Otherwise it's a name
+                elif text_cleaned.isalpha() and len(text_cleaned) > 2:
+                    if name is None:
+                        name = text_cleaned
+                    elif text_cleaned.lower() not in ['level', 'x', 'f', 've']:
+                        # Keep the longer name
+                        name = text_cleaned if len(text_cleaned) > len(name) else name
 
-                                # Validate health value
-                                if potential_health.isdigit():
-                                    val = int(potential_health)
-                                    if 1 <= val <= 100:
-                                        health = val
-                                        # Also extract the name part
-                                        if len(potential_name) > 2:
-                                            name = potential_name
-                        # Otherwise it might be part of the name
-                        elif len(part) > 2 and part.isalpha():
-                            if name is None:
-                                name = part
-                            elif part.lower() not in ['x', 'f', 've']:  # Filter common OCR artifacts
-                                name = part if len(part) > len(name) else name
+            # Choose the best health value (prefer rightmost/last valid number)
+            if all_health_values:
+                health = all_health_values[-1]
 
-                return health, name
+            return health, name
 
         except Exception:
             pass
 
-        # If full slot OCR fails, try the original methods as fallback
-        return self.extract_health_from_slot(slot), self.extract_name_from_slot(slot)
+        return None, None
 
     def extract_health_from_slot(self, slot: np.ndarray) -> Optional[int]:
         """
-        Fallback method to extract just health value from a single player slot
+        Fallback method to extract just health value from a single player slot using EasyOCR
 
         Args:
             slot: Image of a single player slot
@@ -284,36 +300,31 @@ class TFTHealthDetector:
         enhanced = clahe.apply(scaled)
 
         # Threshold to extract white text on dark background
-        _, binary = cv2.threshold(enhanced, 180, 255, cv2.THRESH_BINARY)
+        _, binary = cv2.threshold(enhanced, 150, 255, cv2.THRESH_BINARY)
 
         # Clean up with small kernel
         kernel = np.ones((2, 2), np.uint8)
         binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
         binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
 
-        # Try OCR with different configurations
-        configs = [
-            '--psm 7 -c tessedit_char_whitelist=0123456789',  # Single line
-            '--psm 8 -c tessedit_char_whitelist=0123456789',  # Single word
-            '--psm 13 -c tessedit_char_whitelist=0123456789', # Raw line
-        ]
+        try:
+            # Use EasyOCR to read text
+            results = self.reader.readtext(binary, detail=1, allowlist='0123456789')
 
-        for config in configs:
-            try:
-                text = pytesseract.image_to_string(binary, config=config).strip()
-
+            for bbox, text, confidence in results:
+                text = text.strip()
                 if text and text.isdigit():
                     health = int(text)
                     if 1 <= health <= 100:
                         return health
-            except Exception:
-                pass
+        except Exception:
+            pass
 
         return None
 
     def extract_name_from_slot(self, slot: np.ndarray) -> Optional[str]:
         """
-        Extract player name from a single player slot
+        Extract player name from a single player slot using EasyOCR
 
         Args:
             slot: Image of a single player slot
@@ -330,15 +341,17 @@ class TFTHealthDetector:
         gray = cv2.cvtColor(name_region, cv2.COLOR_BGR2GRAY)
         _, binary = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
 
-        # Try OCR
         try:
-            text = pytesseract.image_to_string(binary, config='--psm 8').strip()
+            # Use EasyOCR to read text
+            results = self.reader.readtext(binary, detail=1)
 
-            # Clean up the text
-            text = ''.join(c for c in text if c.isalnum() or c in ' _-')
+            for bbox, text, confidence in results:
+                text = text.strip()
+                # Clean up the text
+                text = ''.join(c for c in text if c.isalnum() or c in ' _-')
 
-            if len(text) > 2:  # Reasonable name length
-                return text
+                if len(text) > 2:  # Reasonable name length
+                    return text
         except Exception:
             pass
 
@@ -365,11 +378,10 @@ class TFTHealthDetector:
         # Check if enough yellow pixels
         yellow_ratio = np.sum(yellow_mask > 0) / yellow_mask.size
 
-        # Set threshold at 6% to catch true yellow circles (typically 8%+)
-        # but may include some false positives from golden UI elements
-        # Slot 1 (user) = 8.2%, Slot 6 (not user but golden) = 9.2%
-        # This is tricky as slot 6 has more yellow than the actual user slot
-        return yellow_ratio > 0.06 and yellow_ratio < 0.09  # Between 6% and 9% yellow pixels
+        # Set threshold at 6% to catch true yellow circles
+        # User slots typically have 8-12% yellow ratio
+        # Non-user slots with golden elements: 4-5%
+        return yellow_ratio > 0.06  # More than 6% yellow pixels indicates user slot
 
     def detect_all_players_health(self, frame: np.ndarray) -> List[Dict]:
         """
@@ -424,7 +436,7 @@ class TFTHealthDetector:
 
     def extract_health_value(self, region: np.ndarray) -> Optional[int]:
         """
-        Extract the health value using OCR
+        Extract the health value using EasyOCR
 
         Returns:
             Health value as integer, or None if not detected
@@ -433,16 +445,11 @@ class TFTHealthDetector:
             # Preprocess for OCR
             processed = self.preprocess_for_ocr(region)
 
-            # Try different OCR configurations
-            configs = [
-                '--psm 8 -c tessedit_char_whitelist=0123456789',  # Single word
-                '--psm 7 -c tessedit_char_whitelist=0123456789',  # Single line
-                '--psm 11 -c tessedit_char_whitelist=0123456789', # Sparse text
-            ]
+            # Use EasyOCR to read text
+            results = self.reader.readtext(processed, detail=1, allowlist='0123456789')
 
-            for config in configs:
-                text = pytesseract.image_to_string(processed, config=config).strip()
-
+            for bbox, text, confidence in results:
+                text = text.strip()
                 if text and text.isdigit():
                     health = int(text)
                     # Validate reasonable health range (1-100 in TFT)

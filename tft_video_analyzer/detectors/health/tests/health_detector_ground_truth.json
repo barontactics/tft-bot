@@ -1,0 +1,902 @@
+{
+  "0": {
+    "confidence": 0.0,
+    "all_players": [
+      {
+        "health": 100,
+        "name": "mDBepo",
+        "is_user": false
+      },
+      {
+        "health": 100,
+        "name": "SZero",
+        "is_user": false
+      },
+      {
+        "health": 100,
+        "name": "krish",
+        "is_user": false
+      },
+      {
+        "health": 100,
+        "name": "luwi",
+        "is_user": false
+      },
+      {
+        "health": 100,
+        "name": "doesthisworknow",
+        "is_user": false
+      },
+      {
+        "health": 100,
+        "name": null,
+        "is_user": true
+      },
+      {
+        "health": 100,
+        "name": "VanillaPasta",
+        "is_user": false
+      },
+      {
+        "health": 100,
+        "name": "goldd",
+        "is_user": false
+      }
+    ]
+  },
+  "1": {
+    "confidence": 0.3,
+    "all_players": [
+      {
+        "health": 100,
+        "name": "mDBepo",
+        "is_user": false
+      },
+      {
+        "health": 100,
+        "name": "SZero",
+        "is_user": false
+      },
+      {
+        "health": 100,
+        "name": "krish",
+        "is_user": false
+      },
+      {
+        "health": 100,
+        "name": "luwi",
+        "is_user": false
+      },
+      {
+        "health": 100,
+        "name": "doesthisworknow",
+        "is_user": false
+      },
+      {
+        "health": 100,
+        "name": null,
+        "is_user": true
+      },
+      {
+        "health": 100,
+        "name": "VanillaPasta",
+        "is_user": false
+      },
+      {
+        "health": 100,
+        "name": "goldd",
+        "is_user": false
+      }
+    ]
+  },
+  "2": {
+    "confidence": 0.0,
+    "all_players": [
+      {
+        "health": 100,
+        "name": "mDBepo",
+        "is_user": false
+      },
+      {
+        "health": 100,
+        "name": "SZero",
+        "is_user": false
+      },
+      {
+        "health": 100,
+        "name": "krish",
+        "is_user": false
+      },
+      {
+        "health": 100,
+        "name": "luwi",
+        "is_user": false
+      },
+      {
+        "health": 100,
+        "name": "doesthisworknow",
+        "is_user": false
+      },
+      {
+        "health": 100,
+        "name": null,
+        "is_user": true
+      },
+      {
+        "health": 100,
+        "name": "VanillaPasta",
+        "is_user": false
+      },
+      {
+        "health": 100,
+        "name": "goldd",
+        "is_user": false
+      }
+    ]
+  },
+  "3": {
+    "confidence": 0.3,
+    "all_players": [
+      {
+        "health": 100,
+        "name": "mDBepo",
+        "is_user": false
+      },
+      {
+        "health": 100,
+        "name": "SZero",
+        "is_user": false
+      },
+      {
+        "health": 100,
+        "name": "Level",
+        "is_user": false
+      },
+      {
+        "health": 100,
+        "name": "luwi",
+        "is_user": false
+      },
+      {
+        "health": 100,
+        "name": "doesthisworknow",
+        "is_user": false
+      },
+      {
+        "health": 100,
+        "name": null,
+        "is_user": true
+      },
+      {
+        "health": 100,
+        "name": "VanillaPasta",
+        "is_user": false
+      },
+      {
+        "health": 100,
+        "name": "goldd",
+        "is_user": false
+      }
+    ]
+  },
+  "4": {
+    "confidence": 0.0,
+    "all_players": [
+      {
+        "health": 100,
+        "name": "krish",
+        "is_user": false
+      },
+      {
+        "health": 100,
+        "name": "doesthisworknow",
+        "is_user": false
+      },
+      {
+        "health": 100,
+        "name": null,
+        "is_user": true
+      },
+      {
+        "health": 100,
+        "name": "goldd",
+        "is_user": false
+      },
+      {
+        "health": 96,
+        "name": "luwi",
+        "is_user": false
+      },
+      {
+        "health": 96,
+        "name": "mDBepo",
+        "is_user": false
+      },
+      {
+        "health": 95,
+        "name": "SZero",
+        "is_user": false
+      },
+      {
+        "health": 95,
+        "name": "VanillaPasta",
+        "is_user": false
+      }
+    ]
+  },
+  "5": {
+    "confidence": 0.3,
+    "all_players": [
+      {
+        "health": 100,
+        "name": "krish",
+        "is_user": false
+      },
+      {
+        "health": 100,
+        "name": null,
+        "is_user": true
+      },
+      {
+        "health": 97,
+        "name": "doesthisworknow",
+        "is_user": false
+      },
+      {
+        "health": 96,
+        "name": "goldd",
+        "is_user": false
+      },
+      {
+        "health": 96,
+        "name": "luwi",
+        "is_user": false
+      },
+      {
+        "health": 95,
+        "name": "SZero",
+        "is_user": false
+      },
+      {
+        "health": 92,
+        "name": "mDBepo",
+        "is_user": false
+      },
+      {
+        "health": 90,
+        "name": "Level",
+        "is_user": false
+      }
+    ]
+  },
+  "6": {
+    "confidence": 0.3,
+    "all_players": [
+      {
+        "health": 100,
+        "name": "krish",
+        "is_user": false
+      },
+      {
+        "health": 100,
+        "name": null,
+        "is_user": true
+      },
+      {
+        "health": 96,
+        "name": "luwi",
+        "is_user": false
+      },
+      {
+        "health": 94,
+        "name": "doesthisworknow",
+        "is_user": false
+      },
+      {
+        "health": 91,
+        "name": "goldd",
+        "is_user": false
+      },
+      {
+        "health": 91,
+        "name": "Zero",
+        "is_user": false
+      },
+      {
+        "health": 90,
+        "name": null,
+        "is_user": true
+      },
+      {
+        "health": 89,
+        "name": "mDBepo",
+        "is_user": false
+      }
+    ]
+  },
+  "7": {
+    "confidence": 0.0,
+    "all_players": [
+      {
+        "health": 100,
+        "name": "krish",
+        "is_user": false
+      },
+      {
+        "health": 100,
+        "name": null,
+        "is_user": true
+      },
+      {
+        "health": 96,
+        "name": "luwi",
+        "is_user": false
+      },
+      {
+        "health": 94,
+        "name": "doesthisworknow",
+        "is_user": false
+      },
+      {
+        "health": 91,
+        "name": "goldd",
+        "is_user": false
+      },
+      {
+        "health": 91,
+        "name": "SZero",
+        "is_user": false
+      },
+      {
+        "health": 90,
+        "name": null,
+        "is_user": true
+      },
+      {
+        "health": 89,
+        "name": "mDBepo",
+        "is_user": false
+      }
+    ]
+  },
+  "8": {
+    "confidence": 0.3,
+    "all_players": [
+      {
+        "health": 100,
+        "name": "krish",
+        "is_user": false
+      },
+      {
+        "health": 100,
+        "name": null,
+        "is_user": true
+      },
+      {
+        "health": 91,
+        "name": "goldd",
+        "is_user": false
+      },
+      {
+        "health": 90,
+        "name": "luwi",
+        "is_user": false
+      },
+      {
+        "health": 90,
+        "name": "VanillaPasta",
+        "is_user": false
+      },
+      {
+        "health": 88,
+        "name": "doesthisworknow",
+        "is_user": false
+      },
+      {
+        "health": 85,
+        "name": "SZero",
+        "is_user": false
+      },
+      {
+        "health": 84,
+        "name": "mDBepo",
+        "is_user": false
+      }
+    ]
+  },
+  "9": {
+    "confidence": 0.3,
+    "all_players": [
+      {
+        "health": 100,
+        "name": "krish",
+        "is_user": false
+      },
+      {
+        "health": 95,
+        "name": null,
+        "is_user": true
+      },
+      {
+        "health": 91,
+        "name": "goldd",
+        "is_user": false
+      },
+      {
+        "health": 90,
+        "name": "VanillaPasta",
+        "is_user": false
+      },
+      {
+        "health": 85,
+        "name": "SZero",
+        "is_user": false
+      },
+      {
+        "health": 85,
+        "name": "luwi",
+        "is_user": false
+      },
+      {
+        "health": 84,
+        "name": "doesthisworknow",
+        "is_user": false
+      },
+      {
+        "health": 77,
+        "name": "mDBepo",
+        "is_user": false
+      }
+    ]
+  },
+  "10": {
+    "confidence": 0.3,
+    "all_players": [
+      {
+        "health": 100,
+        "name": "krish",
+        "is_user": false
+      },
+      {
+        "health": 95,
+        "name": null,
+        "is_user": true
+      },
+      {
+        "health": 91,
+        "name": "goldd",
+        "is_user": false
+      },
+      {
+        "health": 90,
+        "name": "VanillaPasta",
+        "is_user": false
+      },
+      {
+        "health": 85,
+        "name": "SZero",
+        "is_user": false
+      },
+      {
+        "health": 85,
+        "name": "luwi",
+        "is_user": false
+      },
+      {
+        "health": 84,
+        "name": "doesthisworknow",
+        "is_user": false
+      },
+      {
+        "health": 77,
+        "name": "mDBepo",
+        "is_user": false
+      }
+    ]
+  },
+  "11": {
+    "confidence": 0.3,
+    "all_players": [
+      {
+        "health": 100,
+        "name": "krish",
+        "is_user": false
+      },
+      {
+        "health": 95,
+        "name": null,
+        "is_user": true
+      },
+      {
+        "health": 91,
+        "name": "goldd",
+        "is_user": false
+      },
+      {
+        "health": 85,
+        "name": "SZero",
+        "is_user": false
+      },
+      {
+        "health": 84,
+        "name": "VanillaPasta",
+        "is_user": false
+      },
+      {
+        "health": 77,
+        "name": "luwi",
+        "is_user": false
+      },
+      {
+        "health": 76,
+        "name": "doesthisworknow",
+        "is_user": false
+      },
+      {
+        "health": 69,
+        "name": "mDBepo",
+        "is_user": false
+      }
+    ]
+  },
+  "12": {
+    "confidence": 0.0,
+    "all_players": [
+      {
+        "health": 100,
+        "name": "krish",
+        "is_user": false
+      },
+      {
+        "health": 95,
+        "name": null,
+        "is_user": true
+      },
+      {
+        "health": 86,
+        "name": "VanillaPasta",
+        "is_user": false
+      },
+      {
+        "health": 81,
+        "name": "goldd",
+        "is_user": false
+      },
+      {
+        "health": 77,
+        "name": "luwi",
+        "is_user": false
+      },
+      {
+        "health": 77,
+        "name": "SZero",
+        "is_user": false
+      },
+      {
+        "health": 68,
+        "name": "doesthisworknow",
+        "is_user": false
+      },
+      {
+        "health": 63,
+        "name": "mDBepo",
+        "is_user": false
+      }
+    ]
+  },
+  "13": {
+    "confidence": 0.0,
+    "all_players": [
+      {
+        "health": 100,
+        "name": "krish",
+        "is_user": false
+      },
+      {
+        "health": 95,
+        "name": null,
+        "is_user": true
+      },
+      {
+        "health": 86,
+        "name": "VanillaPasta",
+        "is_user": false
+      },
+      {
+        "health": 81,
+        "name": "goldd",
+        "is_user": false
+      },
+      {
+        "health": 77,
+        "name": "luwi",
+        "is_user": false
+      },
+      {
+        "health": 77,
+        "name": "SZero",
+        "is_user": false
+      },
+      {
+        "health": 68,
+        "name": "doesthisworknow",
+        "is_user": false
+      },
+      {
+        "health": 63,
+        "name": "mDBepo",
+        "is_user": false
+      }
+    ]
+  },
+  "14": {
+    "confidence": 0.3,
+    "all_players": [
+      {
+        "health": 100,
+        "name": "krish",
+        "is_user": false
+      },
+      {
+        "health": 95,
+        "name": null,
+        "is_user": true
+      },
+      {
+        "health": 86,
+        "name": "VanillaPasta",
+        "is_user": false
+      },
+      {
+        "health": 81,
+        "name": "goldd",
+        "is_user": false
+      },
+      {
+        "health": 77,
+        "name": "SZero",
+        "is_user": false
+      },
+      {
+        "health": 68,
+        "name": "luwi",
+        "is_user": false
+      },
+      {
+        "health": 63,
+        "name": "mDBepo",
+        "is_user": false
+      },
+      {
+        "health": 58,
+        "name": "doesthisworknow",
+        "is_user": false
+      }
+    ]
+  },
+  "15": {
+    "confidence": 0.0,
+    "all_players": [
+      {
+        "health": 100,
+        "name": "krish",
+        "is_user": false
+      },
+      {
+        "health": 95,
+        "name": null,
+        "is_user": true
+      },
+      {
+        "health": 82,
+        "name": "VanillaPasta",
+        "is_user": false
+      },
+      {
+        "health": 81,
+        "name": "goldd",
+        "is_user": false
+      },
+      {
+        "health": 77,
+        "name": "SZero",
+        "is_user": false
+      },
+      {
+        "health": 68,
+        "name": "luwi",
+        "is_user": false
+      },
+      {
+        "health": 59,
+        "name": "mDBepo",
+        "is_user": true
+      },
+      {
+        "health": 58,
+        "name": "doesthisworknow",
+        "is_user": false
+      }
+    ]
+  },
+  "16": {
+    "confidence": 0.3,
+    "all_players": [
+      {
+        "health": 100,
+        "name": "krish",
+        "is_user": false
+      },
+      {
+        "health": 95,
+        "name": null,
+        "is_user": true
+      },
+      {
+        "health": 82,
+        "name": "VanillaPasta",
+        "is_user": false
+      },
+      {
+        "health": 81,
+        "name": "goldd",
+        "is_user": false
+      },
+      {
+        "health": 77,
+        "name": "SZero",
+        "is_user": false
+      },
+      {
+        "health": 68,
+        "name": "luwi",
+        "is_user": false
+      },
+      {
+        "health": 59,
+        "name": "mDBepo",
+        "is_user": true
+      },
+      {
+        "health": 58,
+        "name": "doesthisworknow",
+        "is_user": false
+      }
+    ]
+  },
+  "17": {
+    "confidence": 0.0,
+    "all_players": [
+      {
+        "health": 100,
+        "name": "krish",
+        "is_user": false
+      },
+      {
+        "health": 95,
+        "name": null,
+        "is_user": true
+      },
+      {
+        "health": 82,
+        "name": "VanillaPasta",
+        "is_user": false
+      },
+      {
+        "health": 81,
+        "name": "goldd",
+        "is_user": false
+      },
+      {
+        "health": 77,
+        "name": "SZero",
+        "is_user": false
+      },
+      {
+        "health": 68,
+        "name": "luwi",
+        "is_user": false
+      },
+      {
+        "health": 59,
+        "name": "mDBepo",
+        "is_user": true
+      },
+      {
+        "health": 58,
+        "name": "doesthisworknow",
+        "is_user": false
+      }
+    ]
+  },
+  "18": {
+    "confidence": 0.3,
+    "all_players": [
+      {
+        "health": 100,
+        "name": "krish",
+        "is_user": false
+      },
+      {
+        "health": 95,
+        "name": null,
+        "is_user": true
+      },
+      {
+        "health": 82,
+        "name": "VanillaPasta",
+        "is_user": false
+      },
+      {
+        "health": 81,
+        "name": "goldd",
+        "is_user": false
+      },
+      {
+        "health": 77,
+        "name": "SZero",
+        "is_user": false
+      },
+      {
+        "health": 68,
+        "name": "luwi",
+        "is_user": false
+      },
+      {
+        "health": 59,
+        "name": "mDBepo",
+        "is_user": false
+      },
+      {
+        "health": 58,
+        "name": "doesthisworknow",
+        "is_user": false
+      }
+    ]
+  },
+  "19": {
+    "confidence": 0.3,
+    "all_players": [
+      {
+        "health": 100,
+        "name": "krish",
+        "is_user": false
+      },
+      {
+        "health": 95,
+        "name": null,
+        "is_user": true
+      },
+      {
+        "health": 84,
+        "name": "VanillaPasta",
+        "is_user": false
+      },
+      {
+        "health": 73,
+        "name": "goldd",
+        "is_user": false
+      },
+      {
+        "health": 69,
+        "name": "SZero",
+        "is_user": false
+      },
+      {
+        "health": 61,
+        "name": "mDBepo",
+        "is_user": false
+      },
+      {
+        "health": 59,
+        "name": "luwi",
+        "is_user": false
+      },
+      {
+        "health": 48,
+        "name": "doesthisworknow",
+        "is_user": false
+      }
+    ]
+  }
+}

@@ -1,0 +1,1 @@
+"""Tests for TFT Health Detector"""
