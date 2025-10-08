@@ -1,5 +1,5 @@
 """Video Processor Module"""
 
-from .processor import TFTVideoProcessor
+from .game_processor import TFTGameProcessor
 
-__all__ = ['TFTVideoProcessor']
+__all__ = ['TFTGameProcessor']
