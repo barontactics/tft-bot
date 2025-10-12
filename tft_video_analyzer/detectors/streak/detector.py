@@ -23,7 +23,14 @@ class StreakType(Enum):
 class TFTStreakDetector:
     """Detects and extracts streak type and length from TFT gameplay screens"""
 
-    def __init__(self, use_easyocr=True):
+    def __init__(self, use_easyocr=True, reader=None):
+        """
+        Initialize streak detector
+
+        Args:
+            use_easyocr: Whether to use EasyOCR (ignored if reader provided)
+            reader: Optional shared EasyOCR reader. If provided, will use this instead of creating new one.
+        """
         # Streak region coordinates (relative to screen size)
         # Streak is displayed to the right of gold region
         # Smaller region focusing on the darker area where number appears
@@ -34,10 +41,14 @@ class TFTStreakDetector:
             'y2_rel': 0.840   # 84% from top (3% height)
         }
 
-        # Initialize EasyOCR reader if available and requested
+        # Initialize EasyOCR reader
         self.easyocr_reader = None
-        if use_easyocr and EASYOCR_AVAILABLE:
+        if reader is not None:
+            # Use shared reader if provided
+            self.easyocr_reader = reader
+        elif use_easyocr and EASYOCR_AVAILABLE:
             try:
+                # Initialize with English only for faster performance
                 self.easyocr_reader = easyocr.Reader(['en'], gpu=False, verbose=False)
             except Exception as e:
                 self.easyocr_reader = None

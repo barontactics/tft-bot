@@ -14,9 +14,19 @@ import re
 class TFTRoundDetector:
     """Detects stage and round from TFT gameplay"""
 
-    def __init__(self):
-        # Initialize EasyOCR reader (English only for numbers and dash)
-        self.reader = easyocr.Reader(['en'], gpu=False)
+    def __init__(self, reader=None):
+        """
+        Initialize round detector
+
+        Args:
+            reader: Optional shared EasyOCR reader. If None, creates a new one.
+        """
+        # Use shared reader if provided, otherwise create new one
+        if reader is not None:
+            self.reader = reader
+        else:
+            # Initialize EasyOCR reader (English only for numbers and dash)
+            self.reader = easyocr.Reader(['en'], gpu=False)
 
         # Region where stage-round indicator appears (top center of info bar)
         # Format is typically "STAGE-ROUND" like "1-2", "3-4", etc.

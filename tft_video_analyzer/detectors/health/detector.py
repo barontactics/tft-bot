@@ -9,9 +9,19 @@ from typing import Optional, Dict, Tuple, List
 class TFTHealthDetector:
     """Detects and extracts all players' health from TFT gameplay screens"""
 
-    def __init__(self):
-        # Initialize EasyOCR reader
-        self.reader = easyocr.Reader(['en'], gpu=False)
+    def __init__(self, reader=None):
+        """
+        Initialize health detector
+
+        Args:
+            reader: Optional shared EasyOCR reader. If None, creates a new one.
+        """
+        # Use shared reader if provided, otherwise create new one
+        if reader is not None:
+            self.reader = reader
+        else:
+            # Initialize EasyOCR reader
+            self.reader = easyocr.Reader(['en'], gpu=False)
 
         # Right sidebar region where player list appears
         # Players are listed vertically on the right side

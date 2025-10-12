@@ -16,7 +16,14 @@ except ImportError:
 class TFTGoldDetector:
     """Detects and extracts gold amount from TFT gameplay screens"""
 
-    def __init__(self, use_easyocr=True):
+    def __init__(self, use_easyocr=True, reader=None):
+        """
+        Initialize gold detector
+
+        Args:
+            use_easyocr: Whether to use EasyOCR (ignored if reader provided)
+            reader: Optional shared EasyOCR reader. If provided, will use this instead of creating new one.
+        """
         # Gold region coordinates (relative to screen size)
         # Gold is displayed in the bottom UI area, TRUE CENTER position
         # Optimized: 5% width with 35% spatial masking - best balance
@@ -32,9 +39,12 @@ class TFTGoldDetector:
         self.gold_color_lower = np.array([10, 80, 150])  # Lower bound for gold/orange
         self.gold_color_upper = np.array([25, 200, 255])  # Upper bound for gold/orange
 
-        # Initialize EasyOCR reader if available and requested
+        # Initialize EasyOCR reader
         self.easyocr_reader = None
-        if use_easyocr and EASYOCR_AVAILABLE:
+        if reader is not None:
+            # Use shared reader if provided
+            self.easyocr_reader = reader
+        elif use_easyocr and EASYOCR_AVAILABLE:
             try:
                 # Initialize with English only for faster performance
                 self.easyocr_reader = easyocr.Reader(['en'], gpu=False, verbose=False)

@@ -11,6 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, List
 import time
+import easyocr
 
 # Import detectors
 from ..detectors.round.detector import TFTRoundDetector
@@ -44,11 +45,16 @@ class TFTGameProcessor:
         self.total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
         self.duration = self.total_frames / self.fps if self.fps > 0 else 0
 
-        # Initialize detectors
-        self.round_detector = TFTRoundDetector()
-        self.gold_detector = TFTGoldDetector()
-        self.health_detector = TFTHealthDetector()
-        self.streak_detector = TFTStreakDetector()
+        # Initialize shared EasyOCR reader (used by all detectors)
+        print("Initializing shared EasyOCR reader...")
+        self.ocr_reader = easyocr.Reader(['en'], gpu=False, verbose=False)
+        print("EasyOCR reader initialized successfully")
+
+        # Initialize detectors with shared reader
+        self.round_detector = TFTRoundDetector(reader=self.ocr_reader)
+        self.gold_detector = TFTGoldDetector(reader=self.ocr_reader)
+        self.health_detector = TFTHealthDetector(reader=self.ocr_reader)
+        self.streak_detector = TFTStreakDetector(reader=self.ocr_reader)
 
         # Game state tracking
         self.current_game_state = GameState()
@@ -80,22 +86,31 @@ class TFTGameProcessor:
         """Detect stage and round from frame"""
         return self.round_detector.detect_stage_round(frame)
 
-    def save_snapshot(self, frame, stage: Optional[int] = None, round_num: Optional[int] = None):
-        """Save a snapshot with metadata"""
+    def save_snapshot(self, frame, stage: Optional[int] = None, round_num: Optional[int] = None, game_state=None):
+        """Save a snapshot with metadata and game state JSON"""
 
         # Determine filename
         timestamp_sec = self.frame_count / self.fps
         self.snapshot_count += 1
 
         if stage and round_num:
-            filename = f"snapshot_{self.snapshot_count:04d}_stage{stage}-{round_num}_frame{self.frame_count}_{timestamp_sec:.1f}s.png"
+            filename_base = f"snapshot_{self.snapshot_count:04d}_stage{stage}-{round_num}_frame{self.frame_count}_{timestamp_sec:.1f}s"
         else:
-            filename = f"snapshot_{self.snapshot_count:04d}_loading_frame{self.frame_count}_{timestamp_sec:.1f}s.png"
+            filename_base = f"snapshot_{self.snapshot_count:04d}_loading_frame{self.frame_count}_{timestamp_sec:.1f}s"
 
+        filename = f"{filename_base}.png"
         filepath = self.session_dir / filename
 
         # Save image
         cv2.imwrite(str(filepath), frame)
+
+        # Save game state JSON alongside snapshot if provided
+        if game_state is not None:
+            game_state_filename = f"{filename_base}.json"
+            game_state_filepath = self.session_dir / game_state_filename
+
+            with open(game_state_filepath, 'w') as f:
+                json.dump(game_state.to_dict(), f, indent=2)
 
         # Save metadata
         metadata = {
@@ -119,17 +134,17 @@ class TFTGameProcessor:
     def process(self):
         """
         Process the video with adaptive sampling:
-        - Sample every 2 seconds initially (looking for game start)
-        - Once stage-round detected, switch to 1 second sampling
+        - Sample every 10 seconds initially (looking for game start)
+        - Once stage-round detected, continue with 10 second sampling
         """
         print(f"\nProcessing video...")
-        print(f"  Initial sampling: Every 2 seconds")
-        print(f"  After game start: Every 1 second")
+        print(f"  Initial sampling: Every 10 seconds")
+        print(f"  After game start: Every 10 seconds")
         print("-" * 60)
 
         # Sampling configuration
-        initial_sample_interval = 2.0  # seconds
-        game_sample_interval = 1.0     # seconds
+        initial_sample_interval = 10.0  # seconds
+        game_sample_interval = 10.0     # seconds
 
         # Calculate frame intervals
         initial_frame_interval = int(self.fps * initial_sample_interval)
@@ -142,103 +157,102 @@ class TFTGameProcessor:
         start_time = time.time()
         last_progress_update = 0
 
-        while True:
-            # Read frame
+        while self.frame_count < self.total_frames:
+            # Seek directly to the frame we want to process
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.frame_count)
             ret, frame = self.cap.read()
             if not ret:
                 break
 
-            # Process frame at current interval
-            if self.frame_count % current_frame_interval == 0:
+            # Detect stage and round
+            stage_round = self.detect_round(frame)
 
-                # Detect stage and round
-                stage_round = self.detect_round(frame)
+            if stage_round:
+                stage = stage_round['stage']
+                round_num = stage_round['round']
 
-                if stage_round:
-                    stage = stage_round['stage']
-                    round_num = stage_round['round']
+                # Check if game just started
+                if not self.game_started:
+                    self.game_started = True
+                    current_frame_interval = game_frame_interval
+                    print(f"\n🎮 Game started! Detected Stage {stage}-{round_num}")
+                    print(f"  Switching to {game_sample_interval}s sampling\n")
 
-                    # Check if game just started
-                    if not self.game_started:
-                        self.game_started = True
-                        current_frame_interval = game_frame_interval
-                        print(f"\n🎮 Game started! Detected Stage {stage}-{round_num}")
-                        print(f"  Switching to {game_sample_interval}s sampling\n")
+                # Enable other detectors once we reach stage 1, round 2
+                if not self.detectors_enabled and stage >= 1 and round_num >= 2:
+                    self.detectors_enabled = True
+                    print(f"\n🔍 Enabling gold, health, and streak detectors at Stage {stage}-{round_num}\n")
 
-                    # Enable other detectors once we reach stage 1, round 2
-                    if not self.detectors_enabled and stage >= 1 and round_num >= 2:
-                        self.detectors_enabled = True
-                        print(f"\n🔍 Enabling gold, health, and streak detectors at Stage {stage}-{round_num}\n")
+                # Update game state with stage and round
+                self.current_game_state.update(stage=stage, round=round_num, frame_number=self.frame_count)
 
-                    # Update game state with stage and round
-                    self.current_game_state.update(stage=stage, round=round_num, frame_number=self.frame_count)
+                # Initialize detector values (will be None if detectors not enabled yet)
+                gold_value = None
+                health_value = None
+                streak_value = None
 
-                    # Run additional detectors if enabled
-                    if self.detectors_enabled:
-                        # Detect gold
-                        gold = self.gold_detector.detect_gold(frame)
-                        if gold is not None:
-                            self.current_game_state.update(gold=gold)
+                # Run additional detectors if enabled (fresh detection per snapshot, not persisted)
+                if self.detectors_enabled:
+                    # Detect gold (fresh detection, not persisted in game state)
+                    gold_value = self.gold_detector.detect_gold(frame)
 
-                        # Detect health
-                        health = self.health_detector.detect_health(frame)
-                        if health is not None:
-                            self.current_game_state.update(health=health)
+                    # Detect health (fresh detection, not persisted in game state)
+                    health_value = self.health_detector.detect_health(frame)
 
-                        # Detect streak
-                        streak_result = self.streak_detector.detect_streak(frame)
-                        if streak_result:
-                            # streak_result is a dict with 'type' and 'length' keys
-                            streak_type = streak_result.get('type')
-                            streak_length = streak_result.get('length')
+                    # Detect streak (fresh detection per snapshot, not persisted in game state)
+                    streak_result = self.streak_detector.detect_streak(frame)
+                    if streak_result:
+                        # streak_result is a dict with 'type' and 'length' keys
+                        streak_type = streak_result.get('type')
+                        streak_length = streak_result.get('length')
 
-                            if streak_length and streak_length > 0:
-                                # Convert to signed value: positive for win, negative for loss
-                                if streak_type.value == 'loss':
-                                    streak_value = -streak_length
-                                else:
-                                    streak_value = streak_length
-                                self.current_game_state.update(streak=streak_value)
+                        if streak_length is not None and streak_length >= 0:
+                            # Convert to signed value: positive for win, negative for loss
+                            if streak_type.value == 'loss':
+                                streak_value = -streak_length if streak_length > 0 else 0
+                            else:
+                                streak_value = streak_length
 
-                    # Save a snapshot of the current game state (before saving snapshot image)
-                    # Note: snapshot_count will be incremented in save_snapshot()
-                    snapshot_id = self.snapshot_count + 1
+                # Save a snapshot of the current game state (before saving snapshot image)
+                # Note: snapshot_count will be incremented in save_snapshot()
+                snapshot_id = self.snapshot_count + 1
 
-                    state_snapshot = GameState(
-                        stage=self.current_game_state.stage,
-                        round=self.current_game_state.round,
-                        gold=self.current_game_state.gold,
-                        health=self.current_game_state.health,
-                        streak=self.current_game_state.streak,
-                        frame_number=self.frame_count,
-                        timestamp=datetime.now()
-                    )
-                    self.game_state_snapshots.append((snapshot_id, state_snapshot))
+                state_snapshot = GameState(
+                    stage=self.current_game_state.stage,
+                    round=self.current_game_state.round,
+                    gold=gold_value,  # Use fresh detection, not persisted state
+                    health=health_value,  # Use fresh detection, not persisted state
+                    streak=streak_value,  # Use fresh detection, not persisted state
+                    frame_number=self.frame_count,
+                    timestamp=datetime.now()
+                )
+                self.game_state_snapshots.append((snapshot_id, state_snapshot))
 
-                    # Print current state
-                    print(f"  {state_snapshot}")
+                # Print current state
+                print(f"  {state_snapshot}")
 
-                    # Save snapshot image
-                    self.save_snapshot(frame, stage, round_num)
+                # Save snapshot image and game state JSON
+                self.save_snapshot(frame, stage, round_num, game_state=state_snapshot)
 
-                else:
-                    # No stage-round detected yet (still in loading/pre-game)
-                    if not self.game_started:
-                        # Save snapshots during loading phase
-                        self.save_snapshot(frame)
+            else:
+                # No stage-round detected yet (still in loading/pre-game)
+                if not self.game_started:
+                    # Save snapshots during loading phase
+                    self.save_snapshot(frame)
 
-                # Progress update every 5 seconds
-                current_time = time.time()
-                if current_time - last_progress_update >= 5:
-                    progress = (self.frame_count / self.total_frames) * 100
-                    elapsed = current_time - start_time
-                    fps_processed = self.frame_count / elapsed if elapsed > 0 else 0
-                    eta = (self.total_frames - self.frame_count) / (fps_processed * self.fps) if fps_processed > 0 else 0
+            # Progress update every 5 seconds
+            current_time = time.time()
+            if current_time - last_progress_update >= 5:
+                progress = (self.frame_count / self.total_frames) * 100
+                elapsed = current_time - start_time
+                fps_processed = self.frame_count / elapsed if elapsed > 0 else 0
+                eta = (self.total_frames - self.frame_count) / (fps_processed * self.fps) if fps_processed > 0 else 0
 
-                    print(f"  Progress: {progress:.1f}% | Snapshots: {self.snapshot_count} | ETA: {eta:.0f}s")
-                    last_progress_update = current_time
+                print(f"  Progress: {progress:.1f}% | Snapshots: {self.snapshot_count} | ETA: {eta:.0f}s")
+                last_progress_update = current_time
 
-            self.frame_count += 1
+            # Move to next frame interval
+            self.frame_count += current_frame_interval
 
         # Cleanup
         self.cap.release()
